@@ -53,10 +53,10 @@ Sub FixExcel(ByVal filePath As String)
     ws.Range("L:L").Delete()
     ws.Range("M:ZZ").Delete()
 
-    ' 🔹 Automatyczne dopasowanie szerokości kolumn
+    ' Automatyczne dopasowanie szerokości kolumn
     ws.Columns.AutoFit()
 
-    ' 🔹 Formatowanie zakresu
+    ' Formatowanie zakresu
     Dim usedRange As Object = ws.Range(ws.Cells(1, 1), ws.Cells(lastRow, lastCol-7))
 
     ' Wyśrodkowanie w poziomie i pionie
@@ -92,7 +92,7 @@ Function CreateLaserAsm(ByVal oDoc As AssemblyDocument) As AssemblyDocument
         End If
 
         ' Tworzymy złożenie z formatki
-        Dim templatePath As String = "C:\VAULT KFB\Templates\KFB - Standard v2.iam"
+        Dim templatePath As String = "własna_ścieżka\formatka.iam"
         Dim oNewAsm As AssemblyDocument = ThisApplication.Documents.Add(DocumentTypeEnum.kAssemblyDocumentObject, templatePath, True)
 
         Dim oNewAsmDef As AssemblyComponentDefinition = oNewAsm.ComponentDefinition
@@ -134,3 +134,4 @@ Sub TraverseOccurrences(ByVal oOccs As ComponentOccurrences, ByRef smList As Lis
         End Try
     Next
 End Sub
+
