@@ -1,52 +1,46 @@
-# iLogic DXF Generator dla Autodesk Inventor
+# iLogic DXF Generator for Autodesk Inventor
 
-Ten projekt zawiera regułę **iLogic** dla Autodesk Inventor, która automatycznie generuje pliki **DXF** z arkuszy blach w złożeniach.
-Skrypt rekurencyjnie przechodzi przez całe złożenie, uwzględnia podzespoły, pomija elementy Content Center oraz wyłączone komponenty, a następnie eksportuje rozwinięcia blach do osobnych plików DXF.
+This project contains an iLogic rule for Autodesk Inventor that automatically generates DXF files from sheet metal flats in assemblies. The script recursively goes through the entire assembly, ignores Content Center elements and suppressed components, and then exports the sheet metal flats to separate DXF files.
 
-## Funkcjonalności
+### Functionality
 
-* ✅ Przechodzi przez całe złożenie i podzłożenia (rekurencyjnie).
-* ✅ Pomija wyłączone (Suppressed) komponenty.
-* ✅ Pomija części z Content Center.
-* ✅ Obsługuje części blaszane (Sheet Metal) i generuje ich rozwinięcia w formacie DXF.
-* ✅ W razie braku rozwinięcia automatycznie próbuje je utworzyć.
-* ✅ Zapisuje DXF-y w folderze źródłowych plików.
-* 🚧 Możliwość rozbudowy o generowanie STEP dla części standardowych.
+✅ Iterates through the entire assembly and subassemblies (recursively).
+✅ Ignores suppressed components.
+✅ Ignores parts from the Content Center.
+✅ Handles sheet metal parts and generates their flats in DXF format.
+✅ If a flat pattern is missing, it automatically attempts to create one.
+✅ Saves DXFs in the source file folder.
+🚧 Possibility of extension to generate STEP for standard parts.
 
-## Wymagania
+### Requirements
 
-* Autodesk Inventor (wersja z obsługą iLogic).
-* Pliki **.iam** (złożenia) zawierające części blaszane **.ipt**.
+* Autodesk Inventor (Created in Inventor 2024).
+* .iam files (assemblies) containing .ipt sheet metal parts.
 
-## Instrukcja użycia
+### Usage Instructions
 
-1. Otwórz główne złożenie w Autodesk Inventor.
-2. W edytorze **iLogic** utwórz nową regułę.
-3. Skopiuj cały kod z pliku `DXF_Generator.iLogic.vb`.
-4. Uruchom regułę.
-5. W folderze, gdzie zapisane są części, pojawią się wygenerowane pliki `.dxf`.
+1. Open the main assembly in Autodesk Inventor.
+2. In the iLogic editor, create a new rule.
+3. Copy the entire code from the `DXF_Generator.iLogic.vb` file.
+4. Run the rule.
+5. In the folder where the parts are saved, the generated `.dxf` files will appear.
 
-## Struktura plików DXF
+### DXF File Structure
 
-* Nazwa pliku DXF jest tworzona na podstawie nazwy części (po ostatnim `-`).
-* Przykład:
+The DXF file name is created based on the part name (after the last `-`).
 
-  * część `Project-123.ipt` → `123.dxf`.
-  * część `Panel.ipt` → `Panel.dxf`.
+Example:
+part `Project-123.ipt` → `123.dxf`.
+part `Panel.ipt` → `Panel.dxf`.
 
-## Dalszy rozwój
+### Further Development
 
-Planowane lub możliwe do dodania funkcje:
+Planned or possible functions to be added:
+* STEP export for standard parts.
+* PDF export of detail drawings.
+* Customizable save options (paths, naming, layers).
 
-* Eksport **STEP** dla części standardowych.
-* Eksport **PDF** rysunków detali.
-* Konfigurowalne opcje zapisu (ścieżki, nazewnictwo, warstwy).
+### License
 
-## Licencja
-
-Projekt dostępny na licencji **MIT** – możesz używać i modyfikować w swoich projektach.
-
----
-
-👤 Autor: Maks
-📌 LinkedIn: www.linkedin.com/in/maks-dorchynets-80a909204
+The project is available under the MIT license – you can use and modify it in your own projects.
+👤 Author: Maks 📌 LinkedIn: www.linkedin.com/in/maks-dorchynets-80a909204
