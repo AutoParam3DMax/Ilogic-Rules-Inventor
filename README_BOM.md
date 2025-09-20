@@ -53,10 +53,12 @@ It collects all sheet metal parts recursively from the assembly and generates a 
 
 ## Usage Example
 
-1. Open your main assembly (`.iam`) in Autodesk Inventor.  
-2. Edit the `"Own path\Template.iam"` function in the code and set your own template path if needed.  
-3. Run the iLogic rule.  
-4. The script generates a **LaserParts.xlsx** file in the assembly folder with a clean, formatted BOM tailored to the custom template.
+1. Open the main assembly in Autodesk Inventor.  
+2. In the iLogic editor, create a new rule.  
+3. Copy the entire code from the file `BOM_Generator.iLogic.vb`.
+4. Edit the `"Own path\Template.iam"` function in the code and set your own template path if needed.  
+5. Run the rule.  
+6. The script generates a **LaserParts.xlsx** file in the assembly folder with a clean, formatted BOM tailored to the custom template.
 
 ---
 
