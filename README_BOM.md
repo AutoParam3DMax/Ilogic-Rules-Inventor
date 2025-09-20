@@ -71,4 +71,4 @@ It collects all sheet metal parts recursively from the assembly and generates a 
 ---
 
 ✍️ Author: Maks  
-🔗 LinkedIn: 
+🔗 LinkedIn: www.linkedin.com/in/maks-dorchynets-80a909204
