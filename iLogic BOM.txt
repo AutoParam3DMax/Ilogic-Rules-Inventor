@@ -1,0 +1,136 @@
+' Eksport BOM z korektą Excela
+
+Sub Main()
+    Dim oDoc As AssemblyDocument = TryCast(ThisApplication.ActiveDocument, AssemblyDocument)
+    If oDoc Is Nothing Then
+        MessageBox.Show("Otwórz najpierw dokument złożenia!", "iLogic")
+        Return
+    End If
+
+    Dim oNewAsm As AssemblyDocument = CreateLaserAsm(oDoc)
+    If oNewAsm Is Nothing Then Return
+
+    ' Eksport BOM
+    Dim sourceFolder As String = System.IO.Path.GetDirectoryName(oDoc.FullFileName)
+    Dim savePath As String = System.IO.Path.Combine(sourceFolder, "LaserParts.xlsx")
+
+    Dim oBOM As BOM = oNewAsm.ComponentDefinition.BOM
+    Dim oBOMView As BOMView = oBOM.BOMViews.Item("Tylko części")
+    oBOMView.Export(savePath, FileFormatEnum.kMicrosoftExcelFormat)
+
+    ' Poprawa Excela po eksporcie
+    FixExcel(savePath)
+
+    Process.Start(savePath)
+    MessageBox.Show("BOM wyeksportowany i poprawiony: " & vbCrLf & savePath, "iLogic")
+End Sub
+
+
+' --- Funkcja do poprawiania Excela ---
+Sub FixExcel(ByVal filePath As String)
+    Dim excelApp As Object = CreateObject("Excel.Application")
+    excelApp.Visible = False
+
+    Dim wb As Object = excelApp.Workbooks.Open(filePath)
+    Dim ws As Object = wb.Sheets(1)
+
+    ' Zmiana nazwy kolumny C
+    ws.Cells(1, 3).Value = "Nazwa DXF"
+
+    ' Podmiana wartości w kolumnie C na podstawie Numeru części (kolumna B)
+    Dim lastRow As Integer = ws.Cells(ws.Rows.Count, 2).End(-4162).Row  'xlUp = -4162
+    Dim lastCol As Integer = ws.Cells(1, ws.Columns.Count).End(-4159).Column  'xlToLeft = -4159
+
+    For r As Integer = 2 To lastRow
+        Dim partNumber As String = CStr(ws.Cells(r, 2).Value)
+        If partNumber.Contains("-") Then
+            Dim idx As Integer = InStr(partNumber, "-")
+            ws.Cells(r, 3).Value = Mid(partNumber, idx + 1)
+        End If
+    Next
+
+    ' Usunięcie kolumn L, N i wszystkich po N
+    ws.Range("L:L").Delete()
+    ws.Range("M:ZZ").Delete()
+
+    ' 🔹 Automatyczne dopasowanie szerokości kolumn
+    ws.Columns.AutoFit()
+
+    ' 🔹 Formatowanie zakresu
+    Dim usedRange As Object = ws.Range(ws.Cells(1, 1), ws.Cells(lastRow, lastCol-7))
+
+    ' Wyśrodkowanie w poziomie i pionie
+    usedRange.HorizontalAlignment = -4108 ' xlCenter
+    usedRange.VerticalAlignment = -4108   ' xlCenter
+
+    ' Obramowanie
+    usedRange.Borders.LineStyle = 1  ' xlContinuous
+    usedRange.Borders.Weight = 2     ' xlThin
+
+    wb.Save()
+    wb.Close()
+    excelApp.Quit()
+
+    ' Zwolnienie COM
+    System.Runtime.InteropServices.Marshal.ReleaseComObject(usedRange)
+    System.Runtime.InteropServices.Marshal.ReleaseComObject(ws)
+    System.Runtime.InteropServices.Marshal.ReleaseComObject(wb)
+    System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp)
+End Sub
+
+
+
+' --- Funkcja tworząca złożenie blach (ta z poprzedniej reguły) ---
+Function CreateLaserAsm(ByVal oDoc As AssemblyDocument) As AssemblyDocument
+    Try
+        Dim smList As New List(Of ComponentOccurrence)
+        TraverseOccurrences(oDoc.ComponentDefinition.Occurrences, smList)
+
+        If smList.Count = 0 Then
+            MessageBox.Show("Nie znaleziono blach.", "iLogic")
+            Return Nothing
+        End If
+
+        ' Tworzymy złożenie z formatki
+        Dim templatePath As String = "C:\VAULT KFB\Templates\KFB - Standard v2.iam"
+        Dim oNewAsm As AssemblyDocument = ThisApplication.Documents.Add(DocumentTypeEnum.kAssemblyDocumentObject, templatePath, True)
+
+        Dim oNewAsmDef As AssemblyComponentDefinition = oNewAsm.ComponentDefinition
+        Dim oMatrix As Matrix = ThisApplication.TransientGeometry.CreateMatrix
+
+        For Each oOcc As ComponentOccurrence In smList
+            oNewAsmDef.Occurrences.AddByComponentDefinition(oOcc.Definition, oMatrix)
+        Next
+
+        ' BOM
+        Dim oBOM As BOM = oNewAsmDef.BOM
+        oBOM.StructuredViewEnabled = True
+        oBOM.StructuredViewFirstLevelOnly = False
+        oBOM.PartsOnlyViewEnabled = True
+
+        Return oNewAsm
+    Catch
+        Return Nothing
+    End Try
+End Function
+
+
+' --- Rekurencyjne zbieranie blach ---
+Sub TraverseOccurrences(ByVal oOccs As ComponentOccurrences, ByRef smList As List(Of ComponentOccurrence))
+    For Each oOcc As ComponentOccurrence In oOccs
+        Try
+            If oOcc.DefinitionDocumentType = DocumentTypeEnum.kPartDocumentObject Then
+                Dim oPartDoc As PartDocument = TryCast(oOcc.Definition.Document, PartDocument)
+                If Not oPartDoc Is Nothing Then
+                    If TypeOf oPartDoc.ComponentDefinition Is SheetMetalComponentDefinition Then
+                        smList.Add(oOcc)
+                    End If
+                End If
+            ElseIf oOcc.DefinitionDocumentType = DocumentTypeEnum.kAssemblyDocumentObject Then
+                TraverseOccurrences(oOcc.SubOccurrences, smList)
+            End If
+        Catch
+            ' ignorujemy błędne komponenty
+        End Try
+    Next
+End Sub

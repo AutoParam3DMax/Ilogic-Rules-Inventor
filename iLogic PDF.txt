@@ -1,0 +1,157 @@
+
+' Główna reguła
+Sub Main()
+
+' Pobranie aktywnego dokumentu - głównego złożenia
+Dim oDoc As Document
+oDoc = ThisDoc.Document
+
+' Sprawdzenie, czy dokument jest złożeniem (IAM)
+If oDoc.DocumentType <> kAssemblyDocumentObject Then
+    MessageBox.Show("Ta reguła działa tylko dla złożeń (.iam)!", "Błąd", MessageBoxButtons.OK, MessageBoxIcon.Error)
+    Exit Sub
+End If
+
+' Utworzenie listy do przechowywania przetworzonych plików
+' Zapobiegnie to wielokrotnemu przetwarzaniu tego samego pliku
+Dim processedFiles As New List(Of String)
+
+' Uruchomienie rekurencyjnej funkcji od głównego złożenia
+ProcessDocumentRecursive(oDoc, processedFiles)
+
+MessageBox.Show("Proces generowania PDF zakończony!", "Zakończono")
+
+End Sub
+
+' **********************************************************************************
+' Rekurencyjna funkcja do przetwarzania dokumentów
+' **********************************************************************************
+Sub ProcessDocumentRecursive(oDoc As Document, processedFiles As List(Of String))
+
+    ' Sprawdzenie, czy plik nie był już przetwarzany
+    If processedFiles.Contains(oDoc.FullFileName) Then
+        Return
+    Else
+        processedFiles.Add(oDoc.FullFileName)
+    End If
+
+    ' Sprawdzenie, czy dokument jest częścią lub złożeniem
+    If oDoc.DocumentType = kPartDocumentObject Or oDoc.DocumentType = kAssemblyDocumentObject Then
+
+        ' Ustalenie ścieżki do pliku IDW
+        Dim sIDWFile As String
+        sIDWFile = Left(oDoc.FullFileName, Len(oDoc.FullFileName) - 3) & "idw"
+
+        ' Sprawdzenie, czy plik IDW istnieje
+        If System.IO.File.Exists(sIDWFile) Then
+            Try
+                ' Otwarcie pliku IDW
+                Dim oIDWDoc As DrawingDocument
+                oIDWDoc = ThisApplication.Documents.Open(sIDWFile, False)
+
+                ' Ustalenie nazwy pliku PDF
+                Dim sPDFFile As String
+                sPDFFile = Left(sIDWFile, Len(sIDWFile) - 3) & "pdf"
+
+                ' Pobranie dodatku PDF Translator
+                Dim PDFAddIn As TranslatorAddIn
+                PDFAddIn = ThisApplication.ApplicationAddIns.ItemById("{0AC6FD96-2F4D-42CE-8BE0-8AEA580399E4}")
+
+                If Not PDFAddIn Is Nothing Then
+                    ' Utworzenie obiektu kontekstu
+                    Dim oContext As TranslationContext
+                    oContext = ThisApplication.TransientObjects.CreateTranslationContext
+                    oContext.Type = IOMechanismEnum.kFileBrowseIOMechanism
+
+                    ' Ustawienia eksportu
+                    Dim oOptions As NameValueMap
+                    oOptions = ThisApplication.TransientObjects.CreateNameValueMap
+
+                    ' Wszystkie arkusze
+                    If PDFAddIn.HasSaveCopyAsOptions(oIDWDoc, oContext, oOptions) Then
+                        oOptions.Value("All_Sheets") = True
+                        oOptions.Value("Remove_Line_Weights") = False
+                        oOptions.Value("Vector_Resolution") = 400
+                    End If
+
+                    ' Utworzenie obiektu danych tłumaczenia
+                    Dim oData As DataMedium
+                    oData = ThisApplication.TransientObjects.CreateDataMedium
+                    oData.FileName = sPDFFile
+
+                    ' Eksport PDF ze wszystkimi arkuszami
+					ExportAllSheetsToPDF(oIDWDoc, sPDFFile)
+
+                End If
+
+                ' Zamknięcie rysunku IDW bez zapisywania zmian
+                oIDWDoc.Close(True)
+
+            Catch
+                MessageBox.Show("Błąd podczas przetwarzania: " & oDoc.FullFileName, "Błąd", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            End Try
+        End If
+    End If
+
+    ' Jeśli dokument jest złożeniem, przejdź przez jego komponenty
+    If oDoc.DocumentType = kAssemblyDocumentObject Then
+        Dim oAssyDoc As AssemblyDocument
+        oAssyDoc = oDoc
+
+        For Each oOcc As ComponentOccurrence In oAssyDoc.ComponentDefinition.Occurrences
+            Try
+                If Not oOcc.Suppressed Then
+                    If Not oOcc.ReferencedDocumentDescriptor Is Nothing Then
+                        If oOcc.ReferencedDocumentDescriptor.ReferencedDocument IsNot Nothing Then
+                            ProcessDocumentRecursive(oOcc.ReferencedDocumentDescriptor.ReferencedDocument, processedFiles)
+                        End If
+                    End If
+                End If
+            Catch ex As Exception
+                MessageBox.Show("Pominięto komponent: " & oOcc.Name & vbCrLf & ex.Message, "Ostrzeżenie")
+            End Try
+        Next
+    End If
+
+End Sub
+
+' **********************************************************************************
+' Eksport IDW do PDF ze wszystkimi arkuszami
+' **********************************************************************************
+Sub ExportAllSheetsToPDF(oIDWDoc As DrawingDocument, sPDFFile As String)
+
+    ' Pobranie Translatora PDF
+    Dim PDFAddIn As TranslatorAddIn
+    PDFAddIn = ThisApplication.ApplicationAddIns.ItemById("{0AC6FD96-2F4D-42CE-8BE0-8AEA580399E4}")
+
+    If PDFAddIn Is Nothing Then
+        MessageBox.Show("Nie znaleziono Translatora PDF!", "Błąd")
+        Exit Sub
+    End If
+
+    ' Kontekst
+    Dim oContext As TranslationContext
+    oContext = ThisApplication.TransientObjects.CreateTranslationContext
+    oContext.Type = IOMechanismEnum.kFileBrowseIOMechanism
+
+    ' Opcje
+    Dim oOptions As NameValueMap
+    oOptions = ThisApplication.TransientObjects.CreateNameValueMap
+
+    ' Ustawienia PDF
+    If PDFAddIn.HasSaveCopyAsOptions(oIDWDoc, oContext, oOptions) Then
+        oOptions.Value("All_Color_AS_Black") = False
+        oOptions.Value("Remove_Line_Weights") = False
+        oOptions.Value("Vector_Resolution") = 400
+        oOptions.Value("Sheet_Range") = PrintRangeEnum.kPrintAllSheets
+    End If
+
+    ' Dane wyjściowe
+    Dim oData As DataMedium
+    oData = ThisApplication.TransientObjects.CreateDataMedium
+    oData.FileName = sPDFFile
+
+    ' Faktyczny eksport
+    PDFAddIn.SaveCopyAs(oIDWDoc, oContext, oOptions, oData)
+
+End Sub
