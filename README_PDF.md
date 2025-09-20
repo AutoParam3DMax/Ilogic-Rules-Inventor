@@ -42,11 +42,13 @@ It supports **recursive traversal of the entire assembly**, ensuring that all co
 
 ---
 
-## Usage Example
+## Usage Instructions
 
-1. Open your main assembly (`.iam`) in Inventor.  
-2. Run the iLogic rule.  
-3. **PDF files** corresponding to IDW drawings will appear in the project folders.
+1. Open the main assembly in Autodesk Inventor.  
+2. In the iLogic editor, create a new rule.  
+3. Copy the entire code from the file `PDF_Generator.iLogic.vb`.  
+4. Run the rule.  
+5. **PDF files** corresponding to IDW drawings will appear in the project folders.
 
 ---
 
