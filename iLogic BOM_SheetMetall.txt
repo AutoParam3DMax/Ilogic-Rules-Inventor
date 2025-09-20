@@ -15,7 +15,7 @@ Sub Main()
     Dim savePath As String = System.IO.Path.Combine(sourceFolder, "LaserParts.xlsx")
 
     Dim oBOM As BOM = oNewAsm.ComponentDefinition.BOM
-    Dim oBOMView As BOMView = oBOM.BOMViews.Item("Tylko części")
+    Dim oBOMView As BOMView = oBOM.BOMViews.Item("Tylko części") ' or 'Parts only" in English Inventor
     oBOMView.Export(savePath, FileFormatEnum.kMicrosoftExcelFormat)
 
     ' Poprawa Excela po eksporcie
@@ -92,7 +92,7 @@ Function CreateLaserAsm(ByVal oDoc As AssemblyDocument) As AssemblyDocument
         End If
 
         ' Tworzymy złożenie z formatki
-        Dim templatePath As String = "własna_ścieżka\formatka.iam"
+        Dim templatePath As String = "Own path\Template.iam" ' here you need to paste your own path to template
         Dim oNewAsm As AssemblyDocument = ThisApplication.Documents.Add(DocumentTypeEnum.kAssemblyDocumentObject, templatePath, True)
 
         Dim oNewAsmDef As AssemblyComponentDefinition = oNewAsm.ComponentDefinition
@@ -134,4 +134,5 @@ Sub TraverseOccurrences(ByVal oOccs As ComponentOccurrences, ByRef smList As Lis
         End Try
     Next
 End Sub
+
 
