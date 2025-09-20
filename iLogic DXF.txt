@@ -6,73 +6,49 @@ Sub main
     Dim oZespolDef As ComponentDefinition
     oZespolDef = oZespol.ComponentDefinition
 
-    'MsgBox("Rozpoczęto skanowanie głównego złożenia: " & oZespol.DisplayName, , "iLogic DXF Generator")
-
     Dim oComp As ComponentOccurrence
     Dim oCompDef As ComponentDefinition
 
     For Each oComp In oZespolDef.Occurrences ' Przeszukujemy przez cały zespół
 
-        'MsgBox("Sprawdzam element: " & oComp.Name & " (z głównego złożenia)", , "Diagnostyka")
-
         ' --- OBSŁUGA WYŁĄCZONYCH (SUPPRESSED) ELEMENTÓW ---
         If oComp.Suppressed Then
-            'MsgBox("Pominięto WYŁĄCZONY komponent: " & oComp.Name, , "Pominięto")
             GoTo pominGlowny
         End If
 
-        ' Próba uzyskania definicji komponentu. Zawsze warto to robić w Try...Catch.
         Try
             oCompDef = oComp.Definition
         Catch ex As Exception
-            'MsgBox("BŁĄD: Nie uzyskano definicji dla: " & oComp.Name & vbCrLf & "Szczegóły: " & ex.Message, vbCritical, "Błąd Definicji")
             GoTo pominGlowny
         End Try
 
-        ' --- GŁÓWNA LOGIKA TYPÓW KOMPONENTÓW ---
         If oCompDef.Type = kAssemblyComponentDefinitionObject Or oCompDef.Type = kWeldmentComponentDefinitionObject Then
-            ' NIE SPRAWDZAMY ISCONTENTMEMBER DLA ZŁOŻEŃ!
-            'MsgBox("ZNALEZIONO PODZESPÓŁ: " & oComp.Name & ". Przechodzę w głąb (rekurencja).", , "Podzespół")
             SzukajPodzespol(oCompDef) ' Przekazujemy DEFINICJĘ podzespołu
         ElseIf oCompDef.Type = kSheetMetalComponentDefinitionObject Or oCompDef.Type = kPartComponentDefinitionObject Then
-            ' --- OBSŁUGA CZĘŚCI Z CONTENT CENTER (TYLKO DLA DETALI I BLACH) ---
             Try
                 If oCompDef.IsContentMember Then
-                    'MsgBox("Pominięto Content Center (detal/blacha): " & oComp.Name, , "Pominięto")
                     GoTo pominGlowny
                 End If
             Catch ex As Exception
-                ' To catch jest na wypadek, gdyby IsContentMember z jakiegoś powodu nadal rzuciło błąd,
-                ' choć dla Part/SheetMetalComponentDefinition nie powinno
-                'MsgBox("BŁĄD: Sprawdzanie IsContentMember dla detalu/blachy: " & oComp.Name & vbCrLf & "Szczegóły: " & ex.Message, vbCritical, "Błąd IsContentMember Detal/Blacha")
                 GoTo pominGlowny
             End Try
 
             If oCompDef.Type = kSheetMetalComponentDefinitionObject Then
-                'MsgBox("ZNALEZIONO BLACHĘ: " & oComp.Name & ". Generuję DXF.", , "Blacha")
                 GenerujDXF(oCompDef)
             ElseIf oCompDef.Type = kPartComponentDefinitionObject Then
-                'MsgBox("ZNALEZIONO ZWYKŁY DETAL: " & oComp.Name & ". Pomijam DXF.", , "Detal")
-                ' Możesz tu dodać kod do generowania STEP, jeśli chcesz.
-                ' oCompDoc = oCompDef.Document
-                ' oCompDoc.SaveAs(oCompDoc.FullFileName.Replace(".ipt", ".stp"), True)
             End If
         Else
-            'MsgBox("NIEZNANY TYP KOMPONENTU: " & oComp.Name & " (Typ: " & oCompDef.Type & "). Pomijam.", , "Inny Typ")
+            MsgBox("NIEZNANY TYP KOMPONENTU: " & oComp.Name & " (Typ: " & oCompDef.Type & "). Pomijam.", , "Inny Typ")
         End If
 
     pominGlowny:
     Next
-    'MsgBox("Skanowanie głównego złożenia ZAKOŃCZONE.", , "iLogic DXF Generator")
+    MsgBox("Skanowanie głównego złożenia ZAKOŃCZONE.", , "iLogic DXF Generator")
 End Sub
 
 Private Sub SzukajPodzespol(ocompdef As ComponentDefinition) ' Funkcja rekurencyjna
 
-    'MsgBox("*** WEJŚCIE DO PODZESPOŁU: " & ocompdef.Document.DisplayName & " ***", , "Rekurencja")
-
-    ' Upewnij się, że ocompdef ma wystąpienia (dla bezpieczeństwa)
     If ocompdef.Occurrences.Count = 0 Then
-        'MsgBox("Podzespół '" & ocompdef.Document.DisplayName & "' jest pusty. Wychodzę z rekurencji.", , "Pusty Podzespół")
         Exit Sub
     End If
 
@@ -81,68 +57,46 @@ Private Sub SzukajPodzespol(ocompdef As ComponentDefinition) ' Funkcja rekurency
 
     For Each oSubComp In ocompdef.Occurrences
 
-        'MsgBox("  Sprawdzam pod-element: " & oSubComp.Name & " (z podzespołu: " & ocompdef.Document.DisplayName & ")", , "Diagnostyka Podzespołu")
-
-        ' --- OBSŁUGA WYŁĄCZONYCH (SUPPRESSED) POD-ELEMENTÓW ---
         If oSubComp.Suppressed Then
-            'MsgBox("  Pominięto WYŁĄCZONY pod-komponent: " & oSubComp.Name, , "Pominięto")
             GoTo pominPodElement
         End If
 
-        ' Próba uzyskania definicji pod-komponentu.
         Try
             oSubCompDef = oSubComp.Definition
-        Catch ex As Exception
-            'MsgBox("  BŁĄD: Nie uzyskano definicji dla pod-elementu: " & oSubComp.Name & vbCrLf & "Szczegóły: " & ex.Message, vbCritical, "Błąd Definicji Pod-elementu")
+        Catch ex As Exception     
             GoTo pominPodElement
         End Try
 
-        ' --- GŁÓWNA LOGIKA TYPÓW POD-KOMPONENTÓW ---
         If oSubCompDef.Type = kAssemblyComponentDefinitionObject Or oSubCompDef.Type = kWeldmentComponentDefinitionObject Then
-            ' NIE SPRAWDZAMY ISCONTENTMEMBER DLA ZŁOŻEŃ!
-            'MsgBox("  ZNALEZIONO ZAGNIEŻDŻONY PODZESPÓŁ: " & oSubComp.Name & ". Schodzę dalej (rekurencja).", , "Zagnieżdżony Podzespół")
             SzukajPodzespol(oSubCompDef) ' REKURENCJA! Przekazujemy DEFINICJĘ podzłożenia
         ElseIf oSubCompDef.Type = kSheetMetalComponentDefinitionObject Or oSubCompDef.Type = kPartComponentDefinitionObject Then
-            ' --- OBSŁUGA CZĘŚCI Z CONTENT CENTER W PODZESPOŁACH (TYLKO DLA DETALI I BLACH) ---
             Try
                 If oSubCompDef.IsContentMember Then
-                    'MsgBox("  Pominięto Content Center (detal/blacha) w podzespole: " & oSubComp.Name, , "Pominięto")
                     GoTo pominPodElement
                 End If
             Catch ex As Exception
-                'MsgBox("  BŁĄD: Sprawdzanie IsContentMember dla detalu/blachy w podzespole: " & oSubComp.Name & vbCrLf & "Szczegóły: " & ex.Message, vbCritical, "Błąd IsContentMember Pod-elementu")
                 GoTo pominPodElement
             End Try
 
             If oSubCompDef.Type = kSheetMetalComponentDefinitionObject Then
-               'MsgBox("  ZNALEZIONO BLACHĘ w podzespole: " & oSubComp.Name & ". Generuję DXF.", , "Blacha w Podzespole")
                 GenerujDXF(oSubCompDef)
-            ElseIf oSubCompDef.Type = kPartComponentDefinitionObject Then
-                'MsgBox("  ZNALEZIONO ZWYKŁY DETAL w podzespole: " & oSubComp.Name & ". Pomijam DXF.", , "Detal w Podzespole")
-                ' Tutaj możesz dodać kod do generowania STEP dla części w podzłożeniu.
-                ' oSubCompDoc = oSubCompDef.Document
-                ' oSubCompDoc.SaveAs(oSubCompDoc.FullFileName.Replace(".ipt", ".stp"), True)
             End If
         Else
-            'MsgBox("  NIEZNANY TYP POD-KOMPONENTU: " & oSubComp.Name & " (Typ: " & oSubCompDef.Type & "). Pomijam.", , "Inny Typ Pod-elementu")
+           
         End If
 
     pominPodElement:
     Next
-    'MsgBox("*** WYJŚCIE Z PODZESPOŁU: " & ocompdef.Document.DisplayName & " ***", , "Rekurencja Zakończona")
 End Sub
 
 Private Sub GenerujDXF(oDef As SheetMetalComponentDefinition)
 
     Dim oDoc As Document = oDef.Document
-    'MsgBox("PRÓBA GENEROWANIA DXF dla: " & oDoc.DisplayName, , "Generowanie DXF")
 
     If oDef.HasFlatPattern = False Then
-        'MsgBox("Brak płaskiego wzoru dla: " & oDoc.DisplayName & ". Próba rozwinięcia.", , "Brak Płaskiego Wzoru")
         Try
             oDef.Unfold
         Catch ex As Exception
-            'MsgBox("BŁĄD ROZWINIĘCIA BLACHY dla: " & oDoc.DisplayName & ". DXF NIE zostanie wygenerowany." & vbCrLf & "Szczegóły: " & ex.Message, vbCritical, "Błąd rozwijania blachy")
             Exit Sub
         End Try
     End If
@@ -170,14 +124,12 @@ Private Sub GenerujDXF(oDef As SheetMetalComponentDefinition)
     End If
 
     Dim pelnaSciezkaDXF As String = sciezka & Nazwa
-    'MsgBox("Ścieżka zapisu DXF: " & pelnaSciezkaDXF, , "Ścieżka")
 
     DXFOption = "FLAT PATTERN DXF?AcadVersion=2000&InvisibleLayers=IV_Tangent;IV_ARC_CENTERS;IV_FEATURE_PROFILES;IV_FEATURE_PROFILES_DOWN;IV_BEND_DOWN;IV_BEND"
 
     Try
         oDef.DataIO.WriteDataToFile(DXFOption, pelnaSciezkaDXF)
-        'MsgBox("SUKCES! Wygenerowano DXF dla: " & oDoc.DisplayName, vbInformation, "Sukces!")
     Catch ex As Exception
-        'MsgBox("BŁĄD GENEROWANIA DXF dla: " & oDoc.DisplayName & vbCrLf & "Ścieżka: " & pelnaSciezkaDXF & vbCrLf & "Szczegóły: " & ex.Message, vbCritical, "Błąd Generowania DXF")
     End Try
 End Sub
+
