@@ -1,1 +1,77 @@
-coś
+# iLogic – Automatic PDF Export from IDW Files
+
+This iLogic rule scans an assembly (`.iam`) and its components recursively, finds associated drawing files (`.idw`) 
+and exports those drawings (all sheets) to PDF files. PDFs are saved next to the original IDW files.
+
+---
+
+## What this rule does
+- Recursively traverses an assembly and all subassemblies.  
+- For each part or assembly with a corresponding `.idw` drawing, opens the drawing and exports **all sheets** to a `.pdf`.  
+- Avoids processing the same file twice.  
+- Shows simple message boxes on completion and on some errors.
+
+---
+
+## Features
+- ✅ Recursive traversal of assemblies and subassemblies.  
+- ✅ Supports both parts (`.ipt`) and assemblies (`.iam`).  
+- ✅ Exports all sheets from IDW drawings to PDF.  
+- ✅ Skips already processed files to avoid duplicates.  
+- ✅ Basic error handling and user notifications.
+
+---
+
+## Requirements
+- Autodesk Inventor with iLogic support (Created in Inventor 2024).  
+- PDF Translator (Inventor PDF add-in) installed on your machine.  
+- Drawing files (`.idw`) must exist next to the part/assembly files and have the same base name.  
+- Read/write permissions to the folders containing IDW/PDF files.
+
+---
+
+## How to run (step-by-step for beginners)
+
+1. **Open Inventor and your assembly**  
+   - Launch Autodesk Inventor.  
+   - Open the main assembly (`.iam`) you want to process.  
+
+2. **Ensure iLogic is available**  
+   - Go to **Manage → iLogic Browser**.  
+   - If you don’t see iLogic, enable it via **Tools → Add-Ins → iLogic**.  
+
+3. **Create and run the rule**  
+   - In the iLogic Browser, right-click **Rules → Add Rule**, name it e.g., `Export_IDW_to_PDF`.  
+   - Paste the VB code into the editor.  
+   - Click **Save**, then **Run** (or double-click the rule in the iLogic Browser to run it).  
+
+4. **What happens**  
+   - The script will process the assembly and subassemblies.  
+   - Any `.idw` drawing found will be exported to a `.pdf` in the same folder.  
+   - At the end, a message box will indicate the process is complete.  
+
+5. **Troubleshooting**  
+   - PDFs not created → check that `.idw` files exist and are correctly named.  
+   - PDF translator missing → ensure Inventor PDF add-in is installed and enabled.  
+   - Permission errors → make sure Inventor can write to the folder.  
+   - Large assemblies → test on a small assembly first.
+
+---
+
+## Customization tips
+- Change PDF export options (vector resolution, color mode) in `ExportAllSheetsToPDF()`.  
+- Export only specific sheets by adjusting `oOptions.Value("Sheet_Range")`.  
+- Save all PDFs to a central folder by modifying `oData.FileName`.  
+- Add logging to a text file instead of message boxes for non-interactive automation.
+
+---
+
+## License
+MIT License – use and modify freely.
+
+---
+
+## Author
+**Maks**  
+LinkedIn: www.linkedin.com/in/maks-dorchynets-80a909204
+
