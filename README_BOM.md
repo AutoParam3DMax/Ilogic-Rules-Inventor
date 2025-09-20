@@ -28,7 +28,7 @@ It collects all sheet metal parts recursively from the assembly and generates a 
 1. The script starts from the **active assembly document** (`.iam`).  
 2. It recursively searches for all sheet metal parts (`.ipt`) in the assembly and subassemblies.  
 3. A new temporary assembly is created containing only the found sheet metal parts, based on a **custom template**.  
-   > ⚠️ Users must edit the `CreateLaserAsm` function and set their own **template path**.  
+   > ⚠️ Users must edit the `"Own path\Template.iam"` function and set their own **template path**.  
 4. The BOM is exported to Excel (`LaserParts.xlsx`) in the same folder as the source assembly.  
 5. Excel corrections are applied automatically via the `FixExcel` function to match the custom BOM layout.  
 6. The final Excel file is opened, and a message box confirms successful export.
@@ -37,7 +37,7 @@ It collects all sheet metal parts recursively from the assembly and generates a 
 
 ## Requirements
 
-* Autodesk Inventor (version with iLogic support)  
+* Autodesk Inventor (Created in Inventor2024)  
 * Excel installed on the system for post-processing
 
 ---
@@ -54,7 +54,7 @@ It collects all sheet metal parts recursively from the assembly and generates a 
 ## Usage Example
 
 1. Open your main assembly (`.iam`) in Autodesk Inventor.  
-2. Edit the `CreateLaserAsm` function in the code and set your own template path if needed.  
+2. Edit the `"Own path\Template.iam"` function in the code and set your own template path if needed.  
 3. Run the iLogic rule.  
 4. The script generates a **LaserParts.xlsx** file in the assembly folder with a clean, formatted BOM tailored to the custom template.
 
@@ -71,4 +71,4 @@ It collects all sheet metal parts recursively from the assembly and generates a 
 ---
 
 ✍️ Author: Maks  
-🔗 LinkedIn: \[Your Profile]  
+🔗 LinkedIn: 
