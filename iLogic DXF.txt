@@ -6,15 +6,36 @@ Sub main
     Dim oZespolDef As ComponentDefinition
     oZespolDef = oZespol.ComponentDefinition
 
+    ' >>> GLOBAL EXPORT PATH
+    Dim SciezkaEksportu As String = ""
+
+    ' >>> SELECTING THE EXPORT MODE
+    Dim wybor As Integer
+    wybor = MsgBox("Select the DXF export method:" & vbCrLf & _
+                   "TAK = export to the folder with the main assembly" & vbCrLf & _
+                   "NIE = selecting a folder in Windows", vbYesNoCancel + vbQuestion, "Export DXF")
+
+    If wybor = vbCancel Then Exit Sub
+
+    If wybor = vbYes Then
+        ' >>> Main submission folder
+        Dim poz As Integer = InStrRev(oZespol.FullDocumentName, "\")
+        SciezkaEksportu = Left(oZespol.FullDocumentName, poz)
+    Else
+        ' >>> Selecting a folder in Windows
+        SciezkaEksportu = WybierzFolder()
+        If SciezkaEksportu = "" Then
+            MsgBox("No folder selected. Export canceled.", vbExclamation, "Cancelled")
+            Exit Sub
+        End If
+    End If
+
+    ' >>> PASSING THROUGH COMPONENTS
     Dim oComp As ComponentOccurrence
     Dim oCompDef As ComponentDefinition
 
-    For Each oComp In oZespolDef.Occurrences ' Przeszukujemy przez cały zespół
-
-        ' --- OBSŁUGA WYŁĄCZONYCH (SUPPRESSED) ELEMENTÓW ---
-        If oComp.Suppressed Then
-            GoTo pominGlowny
-        End If
+    For Each oComp In oZespolDef.Occurrences
+        If oComp.Suppressed Then GoTo pominGlowny
 
         Try
             oCompDef = oComp.Definition
@@ -23,73 +44,61 @@ Sub main
         End Try
 
         If oCompDef.Type = kAssemblyComponentDefinitionObject Or oCompDef.Type = kWeldmentComponentDefinitionObject Then
-            SzukajPodzespol(oCompDef) ' Przekazujemy DEFINICJĘ podzespołu
-        ElseIf oCompDef.Type = kSheetMetalComponentDefinitionObject Or oCompDef.Type = kPartComponentDefinitionObject Then
-            Try
-                If oCompDef.IsContentMember Then
-                    GoTo pominGlowny
-                End If
-            Catch ex As Exception
-                GoTo pominGlowny
-            End Try
-
-            If oCompDef.Type = kSheetMetalComponentDefinitionObject Then
-                GenerujDXF(oCompDef)
-            ElseIf oCompDef.Type = kPartComponentDefinitionObject Then
-            End If
-        Else
-            MsgBox("NIEZNANY TYP KOMPONENTU: " & oComp.Name & " (Typ: " & oCompDef.Type & "). Pomijam.", , "Inny Typ")
+            SzukajPodzespol(oCompDef, SciezkaEksportu)
+        ElseIf oCompDef.Type = kSheetMetalComponentDefinitionObject Then
+            GenerujDXF(oCompDef, SciezkaEksportu)
         End If
 
-    pominGlowny:
+pominGlowny:
     Next
-    MsgBox("Skanowanie głównego złożenia ZAKOŃCZONE.", , "iLogic DXF Generator")
+
+    MsgBox("DXF export completed.", vbInformation, "iLogic DXF Generator")
+
 End Sub
 
-Private Sub SzukajPodzespol(ocompdef As ComponentDefinition) ' Funkcja rekurencyjna
 
-    If ocompdef.Occurrences.Count = 0 Then
-        Exit Sub
+' >>> WINDOWS FOLDER SELECTION FUNCTION
+Private Function WybierzFolder() As String
+    Dim dlg As Object
+    dlg = CreateObject("Shell.Application").BrowseForFolder(0, "Select the folder to save the DXF file", 0, 0)
+    If Not dlg Is Nothing Then
+        WybierzFolder = dlg.Self.Path & "\"
+    Else
+        WybierzFolder = ""
     End If
+End Function
+
+
+' >>> FUNCTION FOR SEARCHING FOR SHEET METAL ELEMENTS IN SUB-ASSEMBLIES
+Private Sub SzukajPodzespol(ocompdef As ComponentDefinition, SciezkaEksportu As String)
+
+    If ocompdef.Occurrences.Count = 0 Then Exit Sub
 
     Dim oSubComp As ComponentOccurrence
     Dim oSubCompDef As ComponentDefinition
 
     For Each oSubComp In ocompdef.Occurrences
-
-        If oSubComp.Suppressed Then
-            GoTo pominPodElement
-        End If
+        If oSubComp.Suppressed Then GoTo pominPodElement
 
         Try
             oSubCompDef = oSubComp.Definition
-        Catch ex As Exception     
+        Catch ex As Exception
             GoTo pominPodElement
         End Try
 
         If oSubCompDef.Type = kAssemblyComponentDefinitionObject Or oSubCompDef.Type = kWeldmentComponentDefinitionObject Then
-            SzukajPodzespol(oSubCompDef) ' REKURENCJA! Przekazujemy DEFINICJĘ podzłożenia
-        ElseIf oSubCompDef.Type = kSheetMetalComponentDefinitionObject Or oSubCompDef.Type = kPartComponentDefinitionObject Then
-            Try
-                If oSubCompDef.IsContentMember Then
-                    GoTo pominPodElement
-                End If
-            Catch ex As Exception
-                GoTo pominPodElement
-            End Try
-
-            If oSubCompDef.Type = kSheetMetalComponentDefinitionObject Then
-                GenerujDXF(oSubCompDef)
-            End If
-        Else
-           
+            SzukajPodzespol(oSubCompDef, SciezkaEksportu)
+        ElseIf oSubCompDef.Type = kSheetMetalComponentDefinitionObject Then
+            GenerujDXF(oSubCompDef, SciezkaEksportu)
         End If
 
-    pominPodElement:
+pominPodElement:
     Next
 End Sub
 
-Private Sub GenerujDXF(oDef As SheetMetalComponentDefinition)
+
+' >>> DXF FILE GENERATION FUNCTION
+Private Sub GenerujDXF(oDef As SheetMetalComponentDefinition, SciezkaEksportu As String)
 
     Dim oDoc As Document = oDef.Document
 
@@ -101,14 +110,9 @@ Private Sub GenerujDXF(oDef As SheetMetalComponentDefinition)
         End Try
     End If
 
-    Dim poz As Integer
-    poz = InStrRev(oDoc.FullDocumentName, "\")
-
-    Dim sciezka As String
-    sciezka = Mid(oDoc.FullFileName, 1, poz)
-
+    ' >>> DXF file name
     Dim Nazwa As String
-    poz = InStrRev(oDoc.DisplayName, "-")
+    Dim poz As Integer = InStrRev(oDoc.DisplayName, "-")
     If poz > 0 Then
         If poz + 1 <= oDoc.DisplayName.Length Then
             Nazwa = Mid(oDoc.DisplayName, poz + 1).Replace(".ipt", "")
@@ -123,7 +127,7 @@ Private Sub GenerujDXF(oDef As SheetMetalComponentDefinition)
         Nazwa = Nazwa & ".dxf"
     End If
 
-    Dim pelnaSciezkaDXF As String = sciezka & Nazwa
+    Dim pelnaSciezkaDXF As String = SciezkaEksportu & Nazwa
 
     DXFOption = "FLAT PATTERN DXF?AcadVersion=2000&InvisibleLayers=IV_Tangent;IV_ARC_CENTERS;IV_FEATURE_PROFILES;IV_FEATURE_PROFILES_DOWN;IV_BEND_DOWN;IV_BEND"
 
@@ -132,4 +136,3 @@ Private Sub GenerujDXF(oDef As SheetMetalComponentDefinition)
     Catch ex As Exception
     End Try
 End Sub
-
