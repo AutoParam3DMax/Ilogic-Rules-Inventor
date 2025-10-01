@@ -1,99 +1,81 @@
-
-' Główna reguła
 Sub Main()
 
-' Pobranie aktywnego dokumentu - głównego złożenia
-Dim oDoc As Document
-oDoc = ThisDoc.Document
+    Dim oDoc As Document
+    oDoc = ThisDoc.Document
 
-' Sprawdzenie, czy dokument jest złożeniem (IAM)
-If oDoc.DocumentType <> kAssemblyDocumentObject Then
-    MessageBox.Show("Ta reguła działa tylko dla złożeń (.iam)!", "Błąd", MessageBoxButtons.OK, MessageBoxIcon.Error)
-    Exit Sub
-End If
+    ' Verifying whether a document is an IAM assembly
+    If oDoc.DocumentType <> kAssemblyDocumentObject Then
+        MessageBox.Show("Ta reguła działa tylko dla złożeń (.iam)!", "Błąd", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        Exit Sub
+    End If
 
-' Utworzenie listy do przechowywania przetworzonych plików
-' Zapobiegnie to wielokrotnemu przetwarzaniu tego samego pliku
-Dim processedFiles As New List(Of String)
+    ' Export path declared
+    Dim ExportFolder As String = String.Empty
 
-' Uruchomienie rekurencyjnej funkcji od głównego złożenia
-ProcessDocumentRecursive(oDoc, processedFiles)
+    Dim result As DialogResult
+    result = MessageBox.Show("Do you want to save the PDF in the main assembly folder?" & vbCrLf & _
+                             "Yes = assembling folder" & vbCrLf & "No = select your own folder", _
+                             "Selecting the save path", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question)
 
-MessageBox.Show("Proces generowania PDF zakończony!", "Zakończono")
+    If result = DialogResult.Cancel Then
+        Exit Sub
+    ElseIf result = DialogResult.Yes Then
+        ExportFolder = System.IO.Path.GetDirectoryName(oDoc.FullFileName)
+    Else
+        ' Folder selection by the user
+        Dim fbd As New FolderBrowserDialog
+        fbd.Description = "Select the folder to save PDF files"
+        If fbd.ShowDialog() = DialogResult.OK Then
+            ExportFolder = fbd.SelectedPath
+        Else
+            Exit Sub
+        End If
+    End If
+
+    ' Creating a list for storing processed files
+    Dim processedFiles As New List(Of String)
+
+    ProcessDocumentRecursive(oDoc, processedFiles, ExportFolder)
+
+    MessageBox.Show("PDF generation process completed!", "Completed")
 
 End Sub
 
-' **********************************************************************************
-' Rekurencyjna funkcja do przetwarzania dokumentów
-' **********************************************************************************
-Sub ProcessDocumentRecursive(oDoc As Document, processedFiles As List(Of String))
 
-    ' Sprawdzenie, czy plik nie był już przetwarzany
+' Recursive function for document processing
+' **********************************************************************************
+Sub ProcessDocumentRecursive(oDoc As Document, processedFiles As List(Of String), ExportFolder As String)
+
     If processedFiles.Contains(oDoc.FullFileName) Then
         Return
     Else
         processedFiles.Add(oDoc.FullFileName)
     End If
 
-    ' Sprawdzenie, czy dokument jest częścią lub złożeniem
     If oDoc.DocumentType = kPartDocumentObject Or oDoc.DocumentType = kAssemblyDocumentObject Then
 
-        ' Ustalenie ścieżki do pliku IDW
         Dim sIDWFile As String
         sIDWFile = Left(oDoc.FullFileName, Len(oDoc.FullFileName) - 3) & "idw"
 
-        ' Sprawdzenie, czy plik IDW istnieje
         If System.IO.File.Exists(sIDWFile) Then
             Try
-                ' Otwarcie pliku IDW
                 Dim oIDWDoc As DrawingDocument
                 oIDWDoc = ThisApplication.Documents.Open(sIDWFile, False)
 
-                ' Ustalenie nazwy pliku PDF
-                Dim sPDFFile As String
-                sPDFFile = Left(sIDWFile, Len(sIDWFile) - 3) & "pdf"
+                ' Creating a PDF name in the selected folder
+                Dim sPDFName As String = System.IO.Path.GetFileNameWithoutExtension(sIDWFile) & ".pdf"
+                Dim sPDFFile As String = System.IO.Path.Combine(ExportFolder, sPDFName)
 
-                ' Pobranie dodatku PDF Translator
-                Dim PDFAddIn As TranslatorAddIn
-                PDFAddIn = ThisApplication.ApplicationAddIns.ItemById("{0AC6FD96-2F4D-42CE-8BE0-8AEA580399E4}")
+                ExportAllSheetsToPDF(oIDWDoc, sPDFFile)
 
-                If Not PDFAddIn Is Nothing Then
-                    ' Utworzenie obiektu kontekstu
-                    Dim oContext As TranslationContext
-                    oContext = ThisApplication.TransientObjects.CreateTranslationContext
-                    oContext.Type = IOMechanismEnum.kFileBrowseIOMechanism
-
-                    ' Ustawienia eksportu
-                    Dim oOptions As NameValueMap
-                    oOptions = ThisApplication.TransientObjects.CreateNameValueMap
-
-                    ' Wszystkie arkusze
-                    If PDFAddIn.HasSaveCopyAsOptions(oIDWDoc, oContext, oOptions) Then
-                        oOptions.Value("All_Sheets") = True
-                        oOptions.Value("Remove_Line_Weights") = False
-                        oOptions.Value("Vector_Resolution") = 400
-                    End If
-
-                    ' Utworzenie obiektu danych tłumaczenia
-                    Dim oData As DataMedium
-                    oData = ThisApplication.TransientObjects.CreateDataMedium
-                    oData.FileName = sPDFFile
-
-                    ' Eksport PDF ze wszystkimi arkuszami
-					ExportAllSheetsToPDF(oIDWDoc, sPDFFile)
-
-                End If
-
-                ' Zamknięcie rysunku IDW bez zapisywania zmian
                 oIDWDoc.Close(True)
 
-            Catch
-                MessageBox.Show("Błąd podczas przetwarzania: " & oDoc.FullFileName, "Błąd", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            Catch ex As Exception
+                MessageBox.Show("Error during processing: " & oDoc.FullFileName & vbCrLf & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
             End Try
         End If
     End If
 
-    ' Jeśli dokument jest złożeniem, przejdź przez jego komponenty
     If oDoc.DocumentType = kAssemblyDocumentObject Then
         Dim oAssyDoc As AssemblyDocument
         oAssyDoc = oDoc
@@ -103,42 +85,39 @@ Sub ProcessDocumentRecursive(oDoc As Document, processedFiles As List(Of String)
                 If Not oOcc.Suppressed Then
                     If Not oOcc.ReferencedDocumentDescriptor Is Nothing Then
                         If oOcc.ReferencedDocumentDescriptor.ReferencedDocument IsNot Nothing Then
-                            ProcessDocumentRecursive(oOcc.ReferencedDocumentDescriptor.ReferencedDocument, processedFiles)
+
+                            ProcessDocumentRecursive(oOcc.ReferencedDocumentDescriptor.ReferencedDocument, processedFiles, ExportFolder)
                         End If
                     End If
                 End If
             Catch ex As Exception
-                MessageBox.Show("Pominięto komponent: " & oOcc.Name & vbCrLf & ex.Message, "Ostrzeżenie")
+                MessageBox.Show("Component omitted: " & oOcc.Name & vbCrLf & ex.Message, "Warning")
             End Try
         Next
     End If
 
 End Sub
 
-' **********************************************************************************
-' Eksport IDW do PDF ze wszystkimi arkuszami
+
+' Export IDW to PDF with all sheets
 ' **********************************************************************************
 Sub ExportAllSheetsToPDF(oIDWDoc As DrawingDocument, sPDFFile As String)
 
-    ' Pobranie Translatora PDF
     Dim PDFAddIn As TranslatorAddIn
     PDFAddIn = ThisApplication.ApplicationAddIns.ItemById("{0AC6FD96-2F4D-42CE-8BE0-8AEA580399E4}")
 
     If PDFAddIn Is Nothing Then
-        MessageBox.Show("Nie znaleziono Translatora PDF!", "Błąd")
+        MessageBox.Show("No PDF Translator found!", "Error")
         Exit Sub
     End If
 
-    ' Kontekst
     Dim oContext As TranslationContext
     oContext = ThisApplication.TransientObjects.CreateTranslationContext
     oContext.Type = IOMechanismEnum.kFileBrowseIOMechanism
 
-    ' Opcje
     Dim oOptions As NameValueMap
     oOptions = ThisApplication.TransientObjects.CreateNameValueMap
 
-    ' Ustawienia PDF
     If PDFAddIn.HasSaveCopyAsOptions(oIDWDoc, oContext, oOptions) Then
         oOptions.Value("All_Color_AS_Black") = False
         oOptions.Value("Remove_Line_Weights") = False
@@ -146,12 +125,10 @@ Sub ExportAllSheetsToPDF(oIDWDoc As DrawingDocument, sPDFFile As String)
         oOptions.Value("Sheet_Range") = PrintRangeEnum.kPrintAllSheets
     End If
 
-    ' Dane wyjściowe
     Dim oData As DataMedium
     oData = ThisApplication.TransientObjects.CreateDataMedium
     oData.FileName = sPDFFile
 
-    ' Faktyczny eksport
     PDFAddIn.SaveCopyAs(oIDWDoc, oContext, oOptions, oData)
 
 End Sub
