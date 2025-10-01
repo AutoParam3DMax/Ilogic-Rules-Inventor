@@ -1,85 +1,71 @@
-iLogic – Automatic PDF Generation from IDW Files in an Assembly
+# iLogic – Automatic PDF Generation from IDW Files in an Assembly
 
-This iLogic script is designed to automatically generate PDF files from IDW drawings linked to parts (.ipt) and assemblies (.iam) in Autodesk Inventor projects.
-It supports recursive traversal of the entire assembly, ensuring that all components with IDW drawings are exported to PDF.
+This iLogic script is designed to automatically generate **PDF files** from IDW drawings linked to parts (`.ipt`) and assemblies (`.iam`) in Autodesk Inventor projects.  
+It supports **recursive traversal of the entire assembly**, ensuring that all components with IDW drawings are exported to PDF.
 
-Features
+---
 
-✅ Recursively searches the entire assembly and subassemblies.
+## Features
 
-✅ Supports both parts (.ipt) and assemblies (.iam).
+* ✅ Recursively searches the entire assembly and subassemblies.  
+* ✅ Supports both parts (`.ipt`) and assemblies (`.iam`).  
+* ✅ Generates PDFs for all sheets in IDW files.  
+* ✅ Automatically skips already processed files to avoid duplicates.  
+* ✅ Error messages for skipped components.  
+* ✅ Choice of export location:  
+  * **Yes** → PDFs are saved in the same folder as the main assembly.  
+  * **No** → A folder selection dialog opens, letting you choose a custom destination.
 
-✅ Generates PDFs for all sheets in IDW files.
+---
 
-✅ Automatically skips already processed files to avoid duplicates.
+## How It Works
 
-✅ Error messages for skipped components.
+1. The script starts from the **active assembly document** (`.iam`).  
+2. At launch, you are asked where to save PDFs:  
+   * **Yes** → PDFs go to the main assembly folder.  
+   * **No** → Choose a custom folder via a dialog.  
+3. For each component, the script checks if there is an associated drawing file (`.idw`).  
+4. If found:  
+   * Opens the `.idw` file,  
+   * Exports it to `.pdf`,  
+   * Saves the PDF in the chosen export folder.  
+5. After traversing the entire assembly tree, it displays a completion message.
 
-✅ New: Choice of export location:
+---
 
-Yes → PDFs are saved in the same folder as the main assembly.
+## Requirements
 
-No → A folder selection dialog opens, letting you choose a custom destination.
+* Autodesk Inventor (Created in Inventor 2024)   
+* Correct associations between parts/assemblies and IDW drawings
+* The code was created for the Polish Inventor interface.
 
-How It Works
+---
 
-The script starts from the active assembly document (.iam).
+## Code Structure
 
-At launch, you are asked where to save PDFs:
+* **Main()** – starts the process, asks for export location, and triggers recursion.  
+* **ProcessDocumentRecursive()** – main logic for traversing assemblies and subassemblies.  
+* **ExportAllSheetsToPDF()** – exports all sheets from the `.idw` file to `.pdf`.
 
-Yes → PDFs go to the main assembly folder.
+---
 
-No → Choose a custom folder via a dialog.
+## Usage Instructions
 
-For each component, the script checks if there is an associated drawing file (.idw).
+1. Open the main assembly in Autodesk Inventor.  
+2. In the iLogic editor, create a new rule.  
+3. Copy the entire code from the file `PDF_Generator.iLogic.vb`.  
+4. Run the rule.  
+5. Choose where to save your PDFs (same folder as assembly or custom folder).  
+6. **PDF files** corresponding to IDW drawings will appear in the selected folder.
 
-If found:
+---
 
-Opens the .idw file,
+## Notes
 
-Exports it to .pdf,
+* The script does not generate PDFs for components without IDW drawings.  
+* If an IDW file is missing links or is corrupted, it will be skipped.  
 
-Saves the PDF in the chosen export folder.
+---
 
-After traversing the entire assembly tree, it displays a completion message.
-
-Requirements
-
-Autodesk Inventor (Created in Inventor 2024)
-
-Correct associations between parts/assemblies and IDW drawings
-
-Code Structure
-
-Main() – starts the process, asks for export location, and triggers recursion.
-
-ProcessDocumentRecursive() – main logic for traversing assemblies and subassemblies.
-
-ExportAllSheetsToPDF() – exports all sheets from the .idw file to .pdf.
-
-Usage Instructions
-
-Open the main assembly in Autodesk Inventor.
-
-In the iLogic editor, create a new rule.
-
-Copy the entire code from the file PDF_Generator.iLogic.vb.
-
-Run the rule.
-
-Choose where to save your PDFs (same folder as assembly or custom folder).
-
-PDF files corresponding to IDW drawings will appear in the selected folder.
-
-Notes
-
-The script does not generate PDFs for components without IDW drawings.
-
-If an IDW file is missing links or is corrupted, it will be skipped.
-
-You can extend the functionality, e.g., export to DWG or add naming rules.
-
-✍️ Author: Maks
-🔗 LinkedIn: www.linkedin.com/in/maks-dorchynets-80a909204
-
-
+✍️ Author: Maks  
+🔗 LinkedIn: (https://www.linkedin.com/in/maks-dorchynets-80a909204)
