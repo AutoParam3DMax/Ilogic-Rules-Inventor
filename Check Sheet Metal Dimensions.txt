@@ -1,0 +1,146 @@
+Sub main
+	
+	Dim oZespol As AssemblyDocument
+	oZespol = ThisApplication.ActiveDocument
+	
+	Dim oZespolDef As ComponentDefinition
+	oZespolDef = oZespol.ComponentDefinition
+
+
+	Dim ListaPrzekroczonych As New List(Of String)
+
+	Dim oComp As ComponentOccurrence
+	Dim oCompDef As ComponentDefinition
+	
+	Dim DLength As Double
+    Dim DWidth As Double
+	
+
+    DLength = InputBox("Wprowadź dopuszczalną DŁUGOŚĆ (mm):", "Ustawienia kontroli wymiarów", 1000)
+    If DLength = 0 Then
+        MessageBox.Show("Anulowano lub wprowadzono nieprawidłową wartość. Reguła zostanie zatrzymana.", "Anulowanie")
+        Exit Sub
+    End If
+    
+
+    DWidth = InputBox("Wprowadź dopuszczalną SZEROKOŚĆ (mm):", "Ustawienia kontroli wymiarów", 2000)
+    If DWidth = 0 Then
+        MessageBox.Show("Anulowano lub wprowadzono nieprawidłową wartość. Reguła zostanie zatrzymana.", "Anulowanie")
+        Exit Sub
+    End If
+	
+	For Each oComp In oZespolDef.Occurrences
+		
+		If oComp.Suppressed Then GoTo pominGlowny
+			
+		oCompDef = oComp.Definition
+		
+		If oCompDef.Type = kAssemblyComponentDefinitionObject Or oCompDef.Type = kWeldmentComponentDefinitionObject Then
+			SzukajPodzespol(DLength, DWidth, oCompDef, ListaPrzekroczonych)
+		ElseIf oCompDef.Type = kSheetMetalComponentDefinitionObject Then
+			SprawdzWymiar(DLength, DWidth, oCompDef, oComp, ListaPrzekroczonych)
+		End If
+pominGlowny:
+	Next
+
+	If ListaPrzekroczonych.Count > 0 Then
+		Dim komunikat As String
+		komunikat = "Elementy przekraczające dopuszczalne wymiary: " & DLength & " x " & DWidth & vbCrLf & vbCrLf
+		For Each wpis In ListaPrzekroczonych
+			komunikat &= wpis & vbCrLf
+		Next
+
+		MessageBox.Show(komunikat, "Wykryto przekroczenia wymiarów")
+
+ 	 Try
+
+            Dim FullPath As String = oZespol.FullFileName
+            Dim FolderPath As String = System.IO.Path.GetDirectoryName(FullPath)
+            Dim TxtFileName As String = System.IO.Path.GetFileNameWithoutExtension(FullPath) & "_Przekroczenia.txt"
+            Dim TxtFilePath As String = System.IO.Path.Combine(FolderPath, TxtFileName)
+            System.IO.File.WriteAllText(TxtFilePath, komunikat)
+            
+            MessageBox.Show("Lista elementów zapisana do pliku: " & vbCrLf & TxtFilePath, "Zapisano")
+            
+        Catch ex As Exception
+            MessageBox.Show("Błąd zapisu pliku TXT: " & ex.Message, "Błąd iLogic")
+        End Try
+        ' ----------------------------------------------------
+	Else
+		MessageBox.Show("Brak elementów przekraczających dopuszczalne wymiary.", "Wynik kontroli")
+	End If
+
+End Sub
+
+
+Private Sub SzukajPodzespol(ByVal DLength As Double, ByVal DWidth As Double, ocompdef As ComponentDefinition, ByRef ListaPrzekroczonych As List(Of String))
+	If ocompdef.Occurrences.Count = 0 Then Exit Sub
+		
+	Dim oPodZespComp As ComponentOccurrence
+	Dim oPodZespCompDef As ComponentDefinition
+		
+	For Each oPodZespComp In ocompdef.Occurrences
+		If oPodZespComp.Suppressed Then GoTo pominPodElement
+				
+		oPodZespCompDef = oPodZespComp.Definition
+				
+		If oPodZespCompDef.Type = kAssemblyComponentDefinitionObject Or oPodZespCompDef.Type = kWeldmentComponentDefinitionObject Then
+			SzukajPodzespol(DLength, DWidth, oPodZespCompDef, ListaPrzekroczonych)
+		ElseIf oPodZespCompDef.Type = kSheetMetalComponentDefinitionObject Then
+			SprawdzWymiar(DLength, DWidth, oPodZespCompDef, oPodZespComp, ListaPrzekroczonych)
+		End If
+pominPodElement:
+	Next
+End Sub
+
+
+Private Sub SprawdzWymiar(ByVal DLength As Double, ByVal DWidth As Double, oDef As SheetMetalComponentDefinition, oOcc As ComponentOccurrence, ByRef ListaPrzekroczonych As List(Of String))
+
+    If oDef.FlatPattern Is Nothing Then
+        oDef.Unfold()
+    End If
+
+    Dim oFlat As FlatPattern = oDef.FlatPattern
+
+    Dim szer As Double = Round(oFlat.Width * 10, 2) ' mm
+    Dim dl As Double = Round(oFlat.Length * 10, 2)
+
+    Dim ElementMax As Double = Math.Max(szer, dl)
+    Dim ElementMin As Double = Math.Min(szer, dl)
+	
+    Dim GranicaMax As Double = Math.Max(DLength, DWidth)
+    Dim GranicaMin As Double = Math.Min(DLength, DWidth)
+
+
+    If ElementMax > GranicaMax Or ElementMin > GranicaMin Then
+
+        Try
+            Dim oStyle As RenderStyle = ThisApplication.ActiveDocument.RenderStyles.Item("Red")
+            oOcc.RenderStyle = oStyle
+        Catch
+ 
+            Dim oColor As Color = ThisApplication.TransientObjects.CreateColor(255, 0, 0)
+            oOcc.Appearance = oColor
+        End Try
+		
+        Dim nr As String = ""
+        Try
+            nr = oDef.Document.PropertySets.Item("Design Tracking Properties").Item("Part Number").Value
+        Catch
+            nr = oDef.Document.DisplayName
+        End Try
+
+        ListaPrzekroczonych.Add(nr & " – " & szer & " x " & dl & " mm")
+		
+	Else 
+        Try
+            Dim oStyle As RenderStyle = ThisApplication.ActiveDocument.RenderStyles.Item("White")
+            oOcc.RenderStyle = oStyle
+        Catch
+ 
+            Dim oColor As Color = ThisApplication.TransientObjects.CreateColor(255, 255, 255)
+            oOcc.Appearance = oColor
+        End Try
+    End If
+
+End Sub
