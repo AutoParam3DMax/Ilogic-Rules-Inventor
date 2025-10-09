@@ -16,16 +16,16 @@ Sub main
     Dim DWidth As Double
 	
 
-    DLength = InputBox("Wprowadź dopuszczalną DŁUGOŚĆ (mm):", "Ustawienia kontroli wymiarów", 1000)
+    DLength = InputBox("Enter the permissible LENGTH (mm):", "Dimension control settings", 1000)
     If DLength = 0 Then
-        MessageBox.Show("Anulowano lub wprowadzono nieprawidłową wartość. Reguła zostanie zatrzymana.", "Anulowanie")
+        MessageBox.Show("Cancelled or invalid value entered. The rule will be stopped.", "Cancelled")
         Exit Sub
     End If
     
 
-    DWidth = InputBox("Wprowadź dopuszczalną SZEROKOŚĆ (mm):", "Ustawienia kontroli wymiarów", 2000)
+    DWidth = InputBox("Enter the acceptable WIDTH (mm):", "Dimension control settings", 2000)
     If DWidth = 0 Then
-        MessageBox.Show("Anulowano lub wprowadzono nieprawidłową wartość. Reguła zostanie zatrzymana.", "Anulowanie")
+        MessageBox.Show("Cancelled or invalid value entered. The rule will be stopped.", "Cancelled")
         Exit Sub
     End If
 	
@@ -45,29 +45,29 @@ pominGlowny:
 
 	If ListaPrzekroczonych.Count > 0 Then
 		Dim komunikat As String
-		komunikat = "Elementy przekraczające dopuszczalne wymiary: " & DLength & " x " & DWidth & vbCrLf & vbCrLf
+		komunikat = "Items exceeding the permissible dimensions: " & DLength & " x " & DWidth & vbCrLf & vbCrLf
 		For Each wpis In ListaPrzekroczonych
 			komunikat &= wpis & vbCrLf
 		Next
 
-		MessageBox.Show(komunikat, "Wykryto przekroczenia wymiarów")
+		MessageBox.Show(komunikat, "Dimension exceedances detected")
 
  	 Try
 
             Dim FullPath As String = oZespol.FullFileName
             Dim FolderPath As String = System.IO.Path.GetDirectoryName(FullPath)
-            Dim TxtFileName As String = System.IO.Path.GetFileNameWithoutExtension(FullPath) & "_Przekroczenia.txt"
+            Dim TxtFileName As String = System.IO.Path.GetFileNameWithoutExtension(FullPath) & "_Exceedances.txt"
             Dim TxtFilePath As String = System.IO.Path.Combine(FolderPath, TxtFileName)
             System.IO.File.WriteAllText(TxtFilePath, komunikat)
             
-            MessageBox.Show("Lista elementów zapisana do pliku: " & vbCrLf & TxtFilePath, "Zapisano")
+            MessageBox.Show("List of items saved to file: " & vbCrLf & TxtFilePath, "Saved")
             
         Catch ex As Exception
-            MessageBox.Show("Błąd zapisu pliku TXT: " & ex.Message, "Błąd iLogic")
+            MessageBox.Show("TXT file write error: " & ex.Message, "iLogic error")
         End Try
         ' ----------------------------------------------------
 	Else
-		MessageBox.Show("Brak elementów przekraczających dopuszczalne wymiary.", "Wynik kontroli")
+		MessageBox.Show("No components exceeding the permissible dimensions.", "Inspection result")
 	End If
 
 End Sub
