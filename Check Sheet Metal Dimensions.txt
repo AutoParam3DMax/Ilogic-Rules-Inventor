@@ -5,11 +5,11 @@ Sub main
 	
 	Dim oZespolDef As ComponentDefinition
 	oZespolDef = oZespol.ComponentDefinition
-
-
+	
 	Dim ListaPrzekroczonych As New List(Of String)
 
 	Dim oComp As ComponentOccurrence
+	Dim oPartDoc As PartDocument
 	Dim oCompDef As ComponentDefinition
 	
 	Dim DLength As Double
@@ -22,25 +22,23 @@ Sub main
         Exit Sub
     End If
     
-
     DWidth = InputBox("Enter the acceptable WIDTH (mm):", "Dimension control settings", 2000)
     If DWidth = 0 Then
         MessageBox.Show("Cancelled or invalid value entered. The rule will be stopped.", "Cancelled")
         Exit Sub
     End If
 	
-	For Each oComp In oZespolDef.Occurrences
+	For Each oComp In oZespolDef.Occurrences.AllLeafOccurrences
 		
-		If oComp.Suppressed Then GoTo pominGlowny
+		If oComp.Suppressed Then Continue For
 			
+		oPartDoc = oComp.Definition.Document
 		oCompDef = oComp.Definition
 		
-		If oCompDef.Type = kAssemblyComponentDefinitionObject Or oCompDef.Type = kWeldmentComponentDefinitionObject Then
-			SzukajPodzespol(DLength, DWidth, oCompDef, ListaPrzekroczonych)
-		ElseIf oCompDef.Type = kSheetMetalComponentDefinitionObject Then
+		If TypeOf oPartDoc.ComponentDefinition Is SheetMetalComponentDefinition Then
 			SprawdzWymiar(DLength, DWidth, oCompDef, oComp, ListaPrzekroczonych)
 		End If
-pominGlowny:
+
 	Next
 
 	If ListaPrzekroczonych.Count > 0 Then
@@ -65,32 +63,11 @@ pominGlowny:
         Catch ex As Exception
             MessageBox.Show("TXT file write error: " & ex.Message, "iLogic error")
         End Try
-        ' ----------------------------------------------------
+
 	Else
 		MessageBox.Show("No components exceeding the permissible dimensions.", "Inspection result")
 	End If
 
-End Sub
-
-
-Private Sub SzukajPodzespol(ByVal DLength As Double, ByVal DWidth As Double, ocompdef As ComponentDefinition, ByRef ListaPrzekroczonych As List(Of String))
-	If ocompdef.Occurrences.Count = 0 Then Exit Sub
-		
-	Dim oPodZespComp As ComponentOccurrence
-	Dim oPodZespCompDef As ComponentDefinition
-		
-	For Each oPodZespComp In ocompdef.Occurrences
-		If oPodZespComp.Suppressed Then GoTo pominPodElement
-				
-		oPodZespCompDef = oPodZespComp.Definition
-				
-		If oPodZespCompDef.Type = kAssemblyComponentDefinitionObject Or oPodZespCompDef.Type = kWeldmentComponentDefinitionObject Then
-			SzukajPodzespol(DLength, DWidth, oPodZespCompDef, ListaPrzekroczonych)
-		ElseIf oPodZespCompDef.Type = kSheetMetalComponentDefinitionObject Then
-			SprawdzWymiar(DLength, DWidth, oPodZespCompDef, oPodZespComp, ListaPrzekroczonych)
-		End If
-pominPodElement:
-	Next
 End Sub
 
 
@@ -101,9 +78,21 @@ Private Sub SprawdzWymiar(ByVal DLength As Double, ByVal DWidth As Double, oDef 
     End If
 
     Dim oFlat As FlatPattern = oDef.FlatPattern
+	
+	Dim oDoc As Document
+	oDoc = ThisApplication.ActiveDocument
+	
+	Dim oHighLightSet As HighlightSets
+	oHighLightSet = oDoc.HighlightSets
+	
+	Dim oHighlight As HighlightSet
+	oHighlight = oHighLightSet.Add
+	
+	oHighlight.Color = ThisApplication.TransientObjects.CreateColor(32, 178, 170)
 
-    Dim szer As Double = Round(oFlat.Width * 10, 2) ' mm
+    Dim szer As Double = Round(oFlat.Width * 10, 2) 
     Dim dl As Double = Round(oFlat.Length * 10, 2)
+	
 
     Dim ElementMax As Double = Math.Max(szer, dl)
     Dim ElementMin As Double = Math.Min(szer, dl)
@@ -113,17 +102,8 @@ Private Sub SprawdzWymiar(ByVal DLength As Double, ByVal DWidth As Double, oDef 
 
 
     If ElementMax > GranicaMax Or ElementMin > GranicaMin Then
-
-        Try
-            Dim oStyle As RenderStyle = ThisApplication.ActiveDocument.RenderStyles.Item("Red")
-            oOcc.RenderStyle = oStyle
-        Catch
- 
-            Dim oColor As Color = ThisApplication.TransientObjects.CreateColor(255, 0, 0)
-            oOcc.Appearance = oColor
-        End Try
-		
-        Dim nr As String = ""
+		oHighlight.AddItem(oOcc)
+		Dim nr As String = ""
         Try
             nr = oDef.Document.PropertySets.Item("Design Tracking Properties").Item("Part Number").Value
         Catch
@@ -131,16 +111,7 @@ Private Sub SprawdzWymiar(ByVal DLength As Double, ByVal DWidth As Double, oDef 
         End Try
 
         ListaPrzekroczonych.Add(nr & " – " & szer & " x " & dl & " mm")
-		
-	Else 
-        Try
-            Dim oStyle As RenderStyle = ThisApplication.ActiveDocument.RenderStyles.Item("White")
-            oOcc.RenderStyle = oStyle
-        Catch
- 
-            Dim oColor As Color = ThisApplication.TransientObjects.CreateColor(255, 255, 255)
-            oOcc.Appearance = oColor
-        End Try
     End If
-
+	
+	
 End Sub
