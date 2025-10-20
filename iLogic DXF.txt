@@ -6,10 +6,10 @@ Sub main
     Dim oZespolDef As ComponentDefinition
     oZespolDef = oZespol.ComponentDefinition
 
-    ' >>> GLOBAL EXPORT PATH
+
     Dim SciezkaEksportu As String = ""
 
-    ' >>> SELECTING THE EXPORT MODE
+
     Dim wybor As Integer
     wybor = MsgBox("Select the DXF export method:" & vbCrLf & _
                    "TAK = export to the folder with the main assembly" & vbCrLf & _
@@ -18,11 +18,11 @@ Sub main
     If wybor = vbCancel Then Exit Sub
 
     If wybor = vbYes Then
-        ' >>> Main submission folder
+
         Dim poz As Integer = InStrRev(oZespol.FullDocumentName, "\")
         SciezkaEksportu = Left(oZespol.FullDocumentName, poz)
     Else
-        ' >>> Selecting a folder in Windows
+
         SciezkaEksportu = WybierzFolder()
         If SciezkaEksportu = "" Then
             MsgBox("No folder selected. Export canceled.", vbExclamation, "Cancelled")
@@ -30,26 +30,23 @@ Sub main
         End If
     End If
 
-    ' >>> PASSING THROUGH COMPONENTS
+ 
     Dim oComp As ComponentOccurrence
     Dim oCompDef As ComponentDefinition
 
-    For Each oComp In oZespolDef.Occurrences
-        If oComp.Suppressed Then GoTo pominGlowny
+    For Each oComp In oZespolDef.Occurrences.AllLeafOccurrences
+        If oComp.Suppressed Then Continue For
 
         Try
             oCompDef = oComp.Definition
         Catch ex As Exception
-            GoTo pominGlowny
+            Continue For
         End Try
 
-        If oCompDef.Type = kAssemblyComponentDefinitionObject Or oCompDef.Type = kWeldmentComponentDefinitionObject Then
-            SzukajPodzespol(oCompDef, SciezkaEksportu)
-        ElseIf oCompDef.Type = kSheetMetalComponentDefinitionObject Then
+        If oCompDef.Type = kSheetMetalComponentDefinitionObject Then
             GenerujDXF(oCompDef, SciezkaEksportu)
         End If
 
-pominGlowny:
     Next
 
     MsgBox("DXF export completed.", vbInformation, "iLogic DXF Generator")
@@ -57,7 +54,7 @@ pominGlowny:
 End Sub
 
 
-' >>> WINDOWS FOLDER SELECTION FUNCTION
+
 Private Function WybierzFolder() As String
     Dim dlg As Object
     dlg = CreateObject("Shell.Application").BrowseForFolder(0, "Select the folder to save the DXF file", 0, 0)
@@ -68,36 +65,6 @@ Private Function WybierzFolder() As String
     End If
 End Function
 
-
-' >>> FUNCTION FOR SEARCHING FOR SHEET METAL ELEMENTS IN SUB-ASSEMBLIES
-Private Sub SzukajPodzespol(ocompdef As ComponentDefinition, SciezkaEksportu As String)
-
-    If ocompdef.Occurrences.Count = 0 Then Exit Sub
-
-    Dim oSubComp As ComponentOccurrence
-    Dim oSubCompDef As ComponentDefinition
-
-    For Each oSubComp In ocompdef.Occurrences
-        If oSubComp.Suppressed Then GoTo pominPodElement
-
-        Try
-            oSubCompDef = oSubComp.Definition
-        Catch ex As Exception
-            GoTo pominPodElement
-        End Try
-
-        If oSubCompDef.Type = kAssemblyComponentDefinitionObject Or oSubCompDef.Type = kWeldmentComponentDefinitionObject Then
-            SzukajPodzespol(oSubCompDef, SciezkaEksportu)
-        ElseIf oSubCompDef.Type = kSheetMetalComponentDefinitionObject Then
-            GenerujDXF(oSubCompDef, SciezkaEksportu)
-        End If
-
-pominPodElement:
-    Next
-End Sub
-
-
-' >>> DXF FILE GENERATION FUNCTION
 Private Sub GenerujDXF(oDef As SheetMetalComponentDefinition, SciezkaEksportu As String)
 
     Dim oDoc As Document = oDef.Document
@@ -109,30 +76,31 @@ Private Sub GenerujDXF(oDef As SheetMetalComponentDefinition, SciezkaEksportu As
             Exit Sub
         End Try
     End If
+	
 
-    ' >>> DXF file name
-    Dim Nazwa As String
-    Dim poz As Integer = InStrRev(oDoc.DisplayName, "-")
-    If poz > 0 Then
-        If poz + 1 <= oDoc.DisplayName.Length Then
-            Nazwa = Mid(oDoc.DisplayName, poz + 1).Replace(".ipt", "")
-        Else
-            Nazwa = oDoc.DisplayName.Replace(".ipt", "")
-        End If
-    Else
-        Nazwa = oDoc.DisplayName.Replace(".ipt", "")
-    End If
-
-    If Not Nazwa.ToLower().EndsWith(".dxf") Then
-        Nazwa = Nazwa & ".dxf"
-    End If
+    Dim Nazwa As String = oDoc.PropertySets.Item("Design Tracking Properties").Item("Part Number").Value
+	If Nazwa = "" Then Nazwa = oDoc.DisplayName
+	
+    Dim poz As Integer = InStrRev(Nazwa, "-")
+	
+	If Nazwa.EndsWith(".ipt") Then
+		Nazwa = Nazwa.Replace(".ipt", "")
+	End If
+	
+	If poz > 0 Then
+		Nazwa = Mid(Nazwa, poz + 1)
+	End If
+	
+    Nazwa = Nazwa & ".dxf"
 
     Dim pelnaSciezkaDXF As String = SciezkaEksportu & Nazwa
 
-    DXFOption = "FLAT PATTERN DXF?AcadVersion=2000&InvisibleLayers=IV_Tangent;IV_ARC_CENTERS;IV_FEATURE_PROFILES;IV_FEATURE_PROFILES_DOWN;IV_BEND_DOWN;IV_BEND"
+    DXFOption = "FLAT PATTERN DXF?AcadVersion=2000&InvisibleLayers=IV_Tangent;IV_ARC_CENTERS;IV_FEATURE_PROFILES;IV_BEND_DOWN;IV_BEND;IV_FEATURE_PROFILES_DOWN" 
 
     Try
         oDef.DataIO.WriteDataToFile(DXFOption, pelnaSciezkaDXF)
     Catch ex As Exception
     End Try
+
 End Sub
+
