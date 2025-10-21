@@ -1,0 +1,72 @@
+Sub Main()
+
+    Dim oDoc As Document = ThisApplication.ActiveDocument
+    If oDoc Is Nothing Then
+        MessageBox.Show("No active document.", "iLogic")
+        Exit Sub
+    End If
+
+    Dim isPart As Boolean = (oDoc.DocumentType = kPartDocumentObject)
+    Dim isAsm As Boolean = (oDoc.DocumentType = kAssemblyDocumentObject)
+
+    If Not (isPart Or isAsm) Then
+        MessageBox.Show("Run the rule in the part (IPT) or assembly (IAM).", "iLogic")
+        Exit Sub
+    End If
+
+    If oDoc.SelectSet.Count = 0 Then
+        MessageBox.Show("Now select the surfaces or components in Inventor, and then run the rule again.", "No selections")
+        Exit Sub
+    End If
+
+    Dim totalArea_internal As Double = 0
+
+    For Each selObj In oDoc.SelectSet
+        Try
+
+            If TypeOf selObj Is Face Then
+                totalArea_internal += CType(selObj, Face).Evaluator.Area
+
+			ElseIf selObj.Name.Contains("Szyk") Or selObj.Name.Contains("Element:") Then
+					MessageBox.Show("The rule does not support component structures.", "Attention")
+				Exit Sub  
+			
+            ElseIf TypeOf selObj Is FaceProxy Then
+                totalArea_internal += CType(selObj, FaceProxy).Evaluator.Area
+
+            ElseIf TypeOf selObj Is ComponentOccurrence Then
+                Dim occ As ComponentOccurrence = CType(selObj, ComponentOccurrence)
+                Dim compDef As ComponentDefinition = occ.Definition
+
+                For Each body As SurfaceBody In compDef.SurfaceBodies
+                    For Each f As Face In body.Faces
+
+                        totalArea_internal += f.Evaluator.Area
+                    Next
+                Next
+            End If
+
+        Catch ex As Exception
+
+        End Try
+    Next
+
+    If totalArea_internal = 0 Then
+        MessageBox.Show("No usable surfaces found.", "No surface area")
+        Exit Sub
+    End If
+
+    Dim totalArea_m2 As Double = totalArea_internal / 10000.0
+    MessageBox.Show("Total area to be painted: " & Math.Round(totalArea_m2, 4) & " m²", "Result")
+
+    Dim propSets As PropertySets = oDoc.PropertySets
+	Dim customProps As PropertySet = propSets.Item("Inventor User Defined Properties")
+	
+	Dim propName As String = "Painting area"
+	Try
+	    customProps.Item(propName).Value = Round(totalArea_m2,2) & " m^2"
+	Catch
+	    customProps.Add(totalArea_m2, propName)
+	End Try
+
+End Sub
